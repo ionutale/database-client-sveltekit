@@ -33,21 +33,32 @@
         <div class="overflow-auto flex-1 bg-base-100">
             <table class="table table-pin-rows table-xs md:table-sm border-separate border-spacing-0 w-full">
                 <thead>
-                    <tr class="bg-base-200 text-base-content/70">
-                         <th class="w-12 bg-base-300/50 text-center font-mono opacity-50">#</th>
+                    <tr class="bg-base-200/50 backdrop-blur-md text-base-content/70">
+                         <th class="w-12 bg-base-300 text-center font-mono opacity-50 border-r border-base-300">#</th>
                         {#each $queryResult.columns as col}
-                            <th class="font-bold border-b border-base-300">{col}</th>
+                            <th class="font-bold border-b border-base-300 py-3">
+                                <div class="flex items-center gap-2">
+                                    <span>{col}</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3 opacity-20 hover:opacity-100 cursor-pointer">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
+                                    </svg>
+                                </div>
+                            </th>
                         {/each}
                     </tr>
                 </thead>
                 <tbody class="font-mono text-xs md:text-sm">
                     {#each $queryResult.rows as row, i}
-                        <tr class="hover:bg-base-200/50 transition-colors">
-                            <th class="bg-base-200/30 text-center opacity-50 font-normal select-none">{i + 1}</th>
+                        <tr class="hover:bg-primary/5 transition-colors group">
+                            <th class="bg-base-200/30 text-center opacity-40 font-normal select-none border-r border-base-300/50">{i + 1}</th>
                             {#each $queryResult.columns as col}
-                            <td class="max-w-xs truncate border-b border-base-200/50" title={String(row[col] ?? '')}>
+                            <td class="max-w-xs truncate border-b border-base-200 group-hover:border-primary/20" title={String(row[col] ?? '')}>
                                 {#if row[col] === null}
-                                    <span class="text-base-content/30 italic">NULL</span>
+                                    <span class="text-base-content/20 italic bg-base-300/50 px-1 rounded">NULL</span>
+                                {:else if typeof row[col] === 'number'}
+                                    <span class="text-secondary font-semibold">{row[col]}</span>
+                                {:else if typeof row[col] === 'boolean'}
+                                    <span class="badge badge-xs {row[col] ? 'badge-success' : 'badge-error'}">{row[col]}</span>
                                 {:else}
                                     {row[col]}
                                 {/if}

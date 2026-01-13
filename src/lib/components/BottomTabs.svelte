@@ -11,30 +11,30 @@
 
 <div class="h-full flex flex-col bg-base-100">
     <!-- Tabs Header -->
-    <div class="h-7 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none">
+    <div class="h-8 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none">
         <button 
-            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+            class="px-4 py-1.5 text-xs rounded transition-all
                    {activeTab === 'results' 
-                       ? 'bg-base-100 border-primary text-base-content font-medium' 
-                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+                       ? 'bg-base-100 text-primary font-bold shadow-sm' 
+                       : 'text-base-content/40 hover:text-base-content hover:bg-base-300/50'}"
             onclick={() => activeTab = 'results'}
         >
             Results
         </button>
         <button 
-            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+            class="px-4 py-1.5 text-xs rounded transition-all
                    {activeTab === 'messages' 
-                       ? 'bg-base-100 border-primary text-base-content font-medium' 
-                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+                       ? 'bg-base-100 text-primary font-bold shadow-sm' 
+                       : 'text-base-content/40 hover:text-base-content hover:bg-base-300/50'}"
             onclick={() => activeTab = 'messages'}
         >
             Messages
         </button>
         <button 
-            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+            class="px-4 py-1.5 text-xs rounded transition-all
                    {activeTab === 'output' 
-                       ? 'bg-base-100 border-primary text-base-content font-medium' 
-                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+                       ? 'bg-base-100 text-primary font-bold shadow-sm' 
+                       : 'text-base-content/40 hover:text-base-content hover:bg-base-300/50'}"
             onclick={() => activeTab = 'output'}
         >
             Output

@@ -4,7 +4,6 @@
 @plugin 'daisyui';
 
 
-
 @plugin "daisyui/theme" {
   name: "light";
   default: false;
@@ -40,8 +39,6 @@
   --noise: 0;
 }
 
-
-
 @plugin "daisyui/theme" {
   name: "dark";
   default: false;
@@ -75,5 +72,30 @@
   --border: 1px;
   --depth: 1;
   --noise: 0;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--bc) / 0.1);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(var(--bc) / 0.2);
+}
+
+/* Glassmorphism utility */
+.glass-header {
+  background: oklch(var(--b2) / 0.7) !important;
+  backdrop-filter: blur(12px);
 }
 
