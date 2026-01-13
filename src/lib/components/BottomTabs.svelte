@@ -1,9 +1,8 @@
 <script lang="ts">
     import ResultTable from '$lib/components/ResultTable.svelte';
     import { queryResult } from '$lib/stores';
-    import { get } from 'svelte/store';
 
-    let active: 'results' | 'messages' = 'results';
+    let activeTab: 'results' | 'messages' | 'output' = $state('results');
 
     function clear() {
         queryResult.set({ columns: [], rows: [], message: undefined, error: undefined, loading: false });
@@ -11,39 +10,60 @@
 </script>
 
 <div class="h-full flex flex-col bg-base-100">
-    <div class="h-8 border-b border-base-content/10 flex items-center px-2 gap-2 bg-base-200 select-none">
-        <div class="tabs tabs-boxed">
-            <button class="tab tab-xs" class:tab-active={active === 'results'} on:click={() => active = 'results'}>Results</button>
-            <button class="tab tab-xs" class:tab-active={active === 'messages'} on:click={() => active = 'messages'}>Messages</button>
+    <!-- Tabs Header -->
+    <div class="h-7 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none">
+        <button 
+            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+                   {activeTab === 'results' 
+                       ? 'bg-base-100 border-primary text-base-content font-medium' 
+                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+            onclick={() => activeTab = 'results'}
+        >
+            Results
+        </button>
+        <button 
+            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+                   {activeTab === 'messages' 
+                       ? 'bg-base-100 border-primary text-base-content font-medium' 
+                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+            onclick={() => activeTab = 'messages'}
+        >
+            Messages
+        </button>
+        <button 
+            class="px-3 py-1 text-xs rounded-t border-b-2 transition-colors
+                   {activeTab === 'output' 
+                       ? 'bg-base-100 border-primary text-base-content font-medium' 
+                       : 'bg-transparent border-transparent text-base-content/60 hover:text-base-content'}"
+            onclick={() => activeTab = 'output'}
+        >
+            Output
+        </button>
+        
+        <div class="flex-1"></div>
+        
+        <div class="text-[10px] text-base-content/50 px-2">
+            {$queryResult.rows?.length ?? 0} row(s)
         </div>
-        <div class="ml-auto text-xs text-base-content/60">{$queryResult.rows?.length ?? 0} rows</div>
     </div>
 
+    <!-- Tab Content -->
     <div class="flex-1 overflow-auto relative">
-        {#if active === 'results'}
+        {#if activeTab === 'results'}
             <ResultTable />
-        {:else}
-            <div class="p-3">
+        {:else if activeTab === 'messages'}
+            <div class="p-3 text-sm font-mono">
                 {#if $queryResult.error}
-                    <div class="alert alert-error">
-                        <div class="flex flex-col">
-                            <span class="font-bold">Error</span>
-                            <pre class="whitespace-pre-wrap">{$queryResult.error}</pre>
-                        </div>
-                    </div>
+                    <div class="text-error whitespace-pre-wrap">{$queryResult.error}</div>
                 {:else if $queryResult.message}
-                    <div class="alert alert-info">
-                        <div class="flex flex-col">
-                            <span class="font-bold">Message</span>
-                            <pre class="whitespace-pre-wrap">{$queryResult.message}</pre>
-                        </div>
-                    </div>
+                    <div class="text-success whitespace-pre-wrap">{$queryResult.message}</div>
                 {:else}
-                    <div class="text-sm text-base-content/30">No messages</div>
+                    <div class="text-base-content/30 italic">No messages</div>
                 {/if}
-                <div class="mt-3">
-                    <button class="btn btn-ghost btn-xs" on:click={clear}>Clear</button>
-                </div>
+            </div>
+        {:else}
+            <div class="p-3 text-sm font-mono text-base-content/50 italic">
+                No output
             </div>
         {/if}
     </div>
