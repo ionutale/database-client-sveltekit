@@ -108,11 +108,5 @@
                 ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }
             }}
         />
-        <!-- Hint overlay when no connection -->
-        {#if !$activeConnection}
-            <div class="absolute inset-0 bg-base-100/50 backdrop-blur-[1px] flex items-center justify-center z-10 pointer-events-none">
-                <p class="text-base-content/30 font-medium">Select a connection to run queries</p>
-            </div>
-        {/if}
     </div>
 </div>
