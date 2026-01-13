@@ -5,7 +5,7 @@
 
     let { value = $bindable("SELECT * FROM sqlite_schema;") } = $props();
 
-    async function runQuery() {
+    export async function runQuery() {
         if (!$activeConnection) {
             queryResult.set({ columns: [], rows: [], error: 'Please select a connection first' });
             return;
