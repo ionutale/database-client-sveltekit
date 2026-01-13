@@ -21,7 +21,7 @@ A SQL client built with SvelteKit, supporting SQLite and PostgreSQL.
 
 3. Run development server:
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## Usage
