@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { activeConnection, type Connection } from '$lib/stores';
+    import { activeConnection, queryResult, type Connection } from '$lib/stores';
 
     let connections: Connection[] = $state([
         { id: '1', name: 'Demo SQLite', type: 'sqlite', connectionString: './test.db' }
@@ -81,6 +81,37 @@
             loadingNodes = new Set(loadingNodes);
         }
     }
+
+    async function viewTableData(conn: Connection, tableName: string) {
+        // Select the connection if not already selected
+        if ($activeConnection?.id !== conn.id) {
+            select(conn);
+        }
+
+        queryResult.set({ columns: [], rows: [], loading: true });
+
+        try {
+            const res = await fetch('/api/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: conn.type,
+                    connectionString: conn.connectionString,
+                    query: `SELECT * FROM "${tableName}" LIMIT 1000`
+                })
+            });
+            const data = await res.json();
+            queryResult.set({ 
+                columns: data.columns || [], 
+                rows: data.rows || [], 
+                message: data.message,
+                error: data.error,
+                loading: false 
+            });
+        } catch (e: any) {
+             queryResult.set({ columns: [], rows: [], error: e.message, loading: false });
+        }
+    }
 </script>
 
 <div class="h-full flex flex-col bg-base-200 select-none">
@@ -156,12 +187,15 @@
                                     <div class="px-2 py-1 text-xs italic opacity-50 ml-1">Loading...</div>
                                 {:else if nodeData[`${conn.id}-tables`]}
                                     {#each nodeData[`${conn.id}-tables`] as table}
-                                        <div class="flex items-center gap-1 px-2 py-1 text-xs text-base-content/80 hover:bg-base-300 rounded ml-1 cursor-pointer">
+                                        <button 
+                                            class="w-full text-left flex items-center gap-1 px-2 py-1 text-xs text-base-content/80 hover:bg-base-300 rounded ml-1 cursor-pointer"
+                                            onclick={() => viewTableData(conn, table)}
+                                        >
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 opacity-50">
                                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M13.125 16.5h7.5" />
                                             </svg>
                                             <span class="truncate">{table}</span>
-                                        </div>
+                                        </button>
                                     {/each}
                                 {:else}
                                     <div class="px-2 py-1 text-xs italic opacity-50 ml-1">No tables found</div>
