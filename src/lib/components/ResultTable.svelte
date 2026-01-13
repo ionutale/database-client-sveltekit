@@ -3,7 +3,7 @@
 
     let { 
         result = null
-    } : { result?: { rows: any[], columns: string[], loading?: boolean } | null } = $props();
+    } : { result?: { rows: any[], columns: string[], loading?: boolean, error?: string, message?: string } | null } = $props();
 
     let activeResult = $derived(result ?? $queryResult);
 

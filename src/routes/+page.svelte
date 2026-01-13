@@ -5,7 +5,7 @@
     import TopToolbar from '$lib/components/TopToolbar.svelte';
     import BottomTabs from '$lib/components/BottomTabs.svelte';
     import TableDetailView from '$lib/components/TableDetailView.svelte';
-    import { activeConnection, tabs, activeTabId, type Tab } from '$lib/stores';
+    import { activeConnection, tabs, activeTabId, connections, type Tab } from '$lib/stores';
 
     let sqlEditorRef: SqlEditor | undefined = $state(undefined);
     let showRight = $state(false);
@@ -23,8 +23,8 @@
         activeTabId.set(id);
     }
 
-    function closeTab(id: number | string, e: Event) {
-        e.stopPropagation();
+    function closeTab(id: number | string, e?: Event) {
+        e?.stopPropagation();
         if ($tabs.length === 1) return;
         
         const index = $tabs.findIndex(t => t.id === id);
@@ -146,15 +146,18 @@
                                     </svg>
                                 {/if}
                                 <span class="truncate max-w-[120px]">{tab.name}</span>
-                                <button
-                                    class="ml-auto opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-base-300 text-base-content/50 hover:text-error transition-all"
-                                    onclick={(e) => closeTab(tab.id, e)}
+                                <div
+                                    class="ml-auto opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-base-300 text-base-content/50 hover:text-error transition-all cursor-pointer"
+                                    onclick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
                                     title="Close"
+                                    role="button"
+                                    tabindex="0"
+                                    onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); closeTab(tab.id); } }}
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                </button>
+                                </div>
                             </button>
                         {/each}
                         
@@ -176,7 +179,7 @@
                             {#if activeTab.type === 'table'}
                                 <TableDetailView 
                                     tableName={activeTab.tableName} 
-                                    connection={activeTab.connection} 
+                                    connection={$connections.find(c => c.id === activeTab.connectionId)} 
                                 />
                             {:else}
                                 <Splitpanes horizontal class="default-theme">

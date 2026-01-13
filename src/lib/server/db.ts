@@ -1,7 +1,10 @@
 import Database from 'better-sqlite3';
 import pg from 'pg';
+import mysql from 'mysql2/promise';
+import mssql from 'mssql';
+import oracledb from 'oracledb';
 
-export type DbType = 'sqlite' | 'postgres';
+export type DbType = 'sqlite' | 'postgres' | 'mysql' | 'mssql' | 'oracle';
 
 export interface QueryResult {
     columns?: string[];
@@ -13,10 +16,8 @@ export interface QueryResult {
 export async function executeQuery(type: DbType, connectionString: string, query: string): Promise<QueryResult> {
     try {
         if (type === 'sqlite') {
-            const db = new Database(connectionString, { readonly: false }); // Open read-write
+            const db = new Database(connectionString, { readonly: false });
             try {
-                // simple heuristic for multiple statements or just one.
-                // better-sqlite3 prepare() takes one statement. 
                 const stmt = db.prepare(query);
                 if (stmt.reader) {
                     const rows = stmt.all();
@@ -42,6 +43,47 @@ export async function executeQuery(type: DbType, connectionString: string, query
                 }
             } finally {
                 await client.end();
+            }
+        } else if (type === 'mysql') {
+            const connection = await mysql.createConnection(connectionString);
+            try {
+                const [rows, fields] = await connection.execute(query);
+                if (Array.isArray(rows) && rows.length > 0 && typeof rows[0] === 'object') {
+                    const columns = fields.map(f => f.name);
+                    return { columns, rows };
+                } else {
+                    const affectedRows = (rows as any)?.affectedRows || 0;
+                    return { message: `Success. Affected rows: ${affectedRows}` };
+                }
+            } finally {
+                await connection.end();
+            }
+        } else if (type === 'mssql') {
+            const pool = new mssql.ConnectionPool(connectionString);
+            await pool.connect();
+            try {
+                const result = await pool.request().query(query);
+                if (result.recordset) {
+                    const columns = Object.keys(result.recordset.columns || {});
+                    return { columns, rows: result.recordset };
+                } else {
+                    return { message: `Success. Rows affected: ${result.rowsAffected?.[0] || 0}` };
+                }
+            } finally {
+                await pool.close();
+            }
+        } else if (type === 'oracle') {
+            const connection = await oracledb.getConnection({ connectionString });
+            try {
+                const result = await connection.execute(query);
+                if (result.rows) {
+                    const columns = result.metaData?.map((m: any) => m.name) || [];
+                    return { columns, rows: result.rows };
+                } else {
+                    return { message: `Success. Rows affected: ${result.rowsAffected || 0}` };
+                }
+            } finally {
+                await connection.close();
             }
         }
         throw new Error(`Unsupported DB type: ${type}`);

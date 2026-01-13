@@ -1,26 +1,36 @@
 <script lang="ts">
     import CodeMirror from "svelte-codemirror-editor";
     import { sql } from "@codemirror/lang-sql";
-    import { activeConnection, queryResult } from '$lib/stores';
+    import { activeConnection, queryResult, connections } from '$lib/stores';
 
     let { value = $bindable("SELECT * FROM sqlite_schema;") } = $props();
 
-    export async function runQuery() {
-        if (!$activeConnection) {
+    let editor: any = $state(null);
+
+    export async function runQuery(selectedText?: string) {
+        const connId = $activeConnection?.id;
+        if (!connId) {
             queryResult.set({ columns: [], rows: [], error: 'Please select a connection first' });
             return;
         }
         
+        const conn = $connections.find(c => c.id === connId);
+        if (!conn) {
+            queryResult.set({ columns: [], rows: [], error: 'Connection not found' });
+            return;
+        }
+
         queryResult.set({ columns: [], rows: [], loading: true });
 
         try {
+            const queryToRun = selectedText || value;
             const res = await fetch('/api/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    type: $activeConnection.type,
-                    connectionString: $activeConnection.connectionString,
-                    query: value
+                    type: conn.type,
+                    connectionString: conn.connectionString,
+                    query: queryToRun
                 })
             });
             const data = await res.json();
@@ -42,6 +52,11 @@
             runQuery();
         }
     }
+
+    function runSelected() {
+        // For now, just run the full query since we can't easily get selection without editor binding
+        runQuery();
+    }
 </script>
 
 <div 
@@ -62,6 +77,7 @@
          <div class="join">
              <button class="btn btn-xs btn-ghost join-item" disabled>Format</button>
              <button class="btn btn-xs btn-ghost join-item" disabled>History</button>
+             <button class="btn btn-xs btn-ghost join-item" onclick={() => runSelected()}>Run Selected</button>
          </div>
 
          <div class="divider divider-horizontal m-0 h-4 self-center opacity-30"></div>
@@ -81,7 +97,7 @@
 
              <button 
                 class="btn btn-xs btn-success text-success-content font-bold gap-1 px-3 shadow-sm border-none hover:brightness-110" 
-                onclick={runQuery} 
+                onclick={() => runQuery()} 
                 disabled={!$activeConnection || $queryResult.loading}
             >
                 {#if $queryResult.loading}
@@ -98,15 +114,10 @@
 
     <!-- Editor Area -->
     <div class="flex-1 overflow-hidden text-base relative group">
-        <CodeMirror
-            bind:value
-            lang={sql()}
-            tabSize={2}
-            styles={{ 
-                "&": { height: "100%", width: "100%", backgroundColor: "transparent" },
-                ".cm-content": { caretColor: "currentColor" },
-                ".cm-scroller": { fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" }
-            }}
+        <CodeMirror 
+            bind:value 
+            extensions={[sql()]} 
+            class="h-full w-full" 
         />
     </div>
 </div>
