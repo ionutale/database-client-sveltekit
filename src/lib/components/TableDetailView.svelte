@@ -8,18 +8,26 @@
     let dataResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     let propertiesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     
-    // Fetch data when component mounts or tableName changes
-    $effect(() => {
+    import { onMount } from 'svelte';
+
+    // Fetch data when component mounts
+    onMount(() => {
+        fetchDataForCurrentTab();
+    });
+
+    function fetchDataForCurrentTab() {
         if (activeTab === 'data') {
             fetchData();
         } else if (activeTab === 'properties') {
             fetchProperties();
         }
-    });
+    }
 
     async function fetchData() {
-        if (!connection) return;
-        dataResult.loading = true;
+        if (!connection || !tableName) return;
+        
+        dataResult = { ...dataResult, loading: true };
+        
         try {
             const res = await fetch('/api/query', {
                 method: 'POST',
@@ -38,13 +46,15 @@
                 error: data.error
             };
         } catch (e: any) {
-            dataResult = { rows: [], columns: [], loading: false, error: e.message };
+            dataResult = { ...dataResult, loading: false, error: e.message };
         }
     }
 
     async function fetchProperties() {
-        if (!connection) return;
-        propertiesResult.loading = true;
+        if (!connection || !tableName) return;
+        
+        propertiesResult = { ...propertiesResult, loading: true };
+        
         try {
             // SQLite specific schema info
             const query = `PRAGMA table_info("${tableName}")`;
@@ -66,7 +76,7 @@
                 error: data.error
             };
         } catch (e: any) {
-             propertiesResult = { rows: [], columns: [], loading: false, error: e.message };
+             propertiesResult = { ...propertiesResult, loading: false, error: e.message };
         }
     }
 </script>
@@ -80,7 +90,10 @@
                        {activeTab === tab.toLowerCase() 
                            ? 'bg-base-100 text-primary font-bold shadow-sm' 
                            : 'text-base-content/40 hover:text-base-content hover:bg-base-300/50'}"
-                onclick={() => activeTab = tab.toLowerCase() as any}
+                onclick={() => {
+                    activeTab = tab.toLowerCase() as any;
+                    fetchDataForCurrentTab();
+                }}
             >
                 {tab}
             </button>
