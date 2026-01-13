@@ -1,6 +1,5 @@
 <script lang="ts">
     import { Splitpanes, Pane } from 'svelte-splitpanes';
-    import 'svelte-splitpanes/dist/index.css';
     
     import ConnectionList from '$lib/components/ConnectionList.svelte';
     import SqlEditor from '$lib/components/SqlEditor.svelte';
