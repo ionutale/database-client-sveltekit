@@ -12,28 +12,37 @@
     let activeSidebar = $state('explorer');
     let sidebarCollapsed = $state(false);
 
-    let activeIndex = $derived($tabs.length > 0 ? Math.min($activeTabId, $tabs.length - 1) : 0);
+    let activeTab = $derived($tabs.find(t => t.id === $activeTabId));
 
     function newTab() {
+        const id = crypto.randomUUID();
         tabs.update(t => {
-            const newT: Tab = { id: Date.now(), type: 'query', name: `Script-${t.length + 1}`, value: '' };
+            const newT: Tab = { id, type: 'query', name: `Script-${t.length + 1}`, value: '' };
             return [...t, newT];
         });
-        activeTabId.set($tabs.length - 1);
+        activeTabId.set(id);
     }
 
-    function closeTab(i: number, e: Event) {
+    function closeTab(id: number | string, e: Event) {
         e.stopPropagation();
         if ($tabs.length === 1) return;
         
-        tabs.update(t => {
-            const newT = [...t];
-            newT.splice(i, 1);
-            return newT;
-        });
+        const index = $tabs.findIndex(t => t.id === id);
+        const isActive = $activeTabId === id;
         
-        if ($activeTabId >= $tabs.length) {
-            activeTabId.set($tabs.length - 1);
+        let nextActiveId = $activeTabId;
+        if (isActive) {
+            if (index === $tabs.length - 1) {
+                nextActiveId = $tabs[index - 1].id;
+            } else {
+                nextActiveId = $tabs[index + 1].id;
+            }
+        }
+        
+        tabs.update(t => t.filter(x => x.id !== id));
+        
+        if (isActive) {
+            activeTabId.set(nextActiveId);
         }
     }
 
@@ -45,8 +54,8 @@
         sidebarCollapsed = !sidebarCollapsed;
     }
     
-    function selectTab(i: number) {
-        activeTabId.set(i);
+    function selectTab(id: number | string) {
+        activeTabId.set(id);
     }
 </script>
 
@@ -118,13 +127,13 @@
                 <div class="h-full flex flex-col bg-base-100">
                     <!-- Tabs Header -->
                     <div class="flex items-center bg-base-200/50 border-b border-base-300/50 overflow-x-auto min-h-[36px] no-scrollbar">
-                        {#each $tabs as tab, i}
+                        {#each $tabs as tab (tab.id)}
                             <button
                                 class="group relative px-3 py-2 text-xs flex items-center gap-2 border-r border-base-300/30 min-w-[120px] max-w-[200px] transition-all duration-200
-                                       {activeIndex === i 
+                                       {$activeTabId === tab.id 
                                            ? 'bg-base-100 text-primary font-medium shadow-[0_-2px_0_0_currentColor_inset]' 
                                            : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'}"
-                                onclick={() => selectTab(i)}
+                                onclick={() => selectTab(tab.id)}
                                 title={tab.name}
                             >
                                 {#if tab.type === 'query'}
@@ -139,7 +148,7 @@
                                 <span class="truncate max-w-[120px]">{tab.name}</span>
                                 <button
                                     class="ml-auto opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-base-300 text-base-content/50 hover:text-error transition-all"
-                                    onclick={(e) => closeTab(i, e)}
+                                    onclick={(e) => closeTab(tab.id, e)}
                                     title="Close"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
@@ -163,16 +172,16 @@
 
                     <!-- Content Area -->
                     <div class="flex-1 overflow-hidden relative">
-                        {#if $tabs.length > 0 && $tabs[activeIndex]}
-                            {#if $tabs[activeIndex].type === 'table'}
+                        {#if activeTab}
+                            {#if activeTab.type === 'table'}
                                 <TableDetailView 
-                                    tableName={$tabs[activeIndex].tableName} 
-                                    connection={$tabs[activeIndex].connection} 
+                                    tableName={activeTab.tableName} 
+                                    connection={activeTab.connection} 
                                 />
                             {:else}
                                 <Splitpanes horizontal class="default-theme">
                                     <Pane size={55} minSize={20}>
-                                        <SqlEditor bind:value={$tabs[activeIndex].value} bind:this={sqlEditorRef} />
+                                        <SqlEditor bind:value={activeTab.value} bind:this={sqlEditorRef} />
                                     </Pane>
                                     <Pane size={45} minSize={15}>
                                         <BottomTabs />

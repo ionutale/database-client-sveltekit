@@ -20,7 +20,7 @@ export interface QueryResultState {
 export const queryResult = writable<QueryResultState>({ columns: [], rows: [] });
 
 export interface Tab {
-    id: number;
+    id: number | string;
     type: 'query' | 'table';
     name: string;
     // Query specific
@@ -33,4 +33,4 @@ export interface Tab {
 export const tabs = writable<Tab[]>([
     { id: 1, type: 'query', name: 'Script-1', value: 'SELECT * FROM sqlite_master;' }
 ]);
-export const activeTabId = writable<number>(1);
+export const activeTabId = writable<number | string>(1);
