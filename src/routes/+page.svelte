@@ -28,12 +28,22 @@
 
 <style>
     /* Customize splitpanes if needed */
-    :global(.splitpanes__splitter) {
-        background-color: var(--fallback-b3,oklch(var(--b3)/1));
-        position: relative;
+    :global(.splitpanes.default-theme .splitpanes__pane) {
+        background-color: var(--fallback-b1,oklch(var(--b1)/1));
     }
-    :global(.splitpanes__splitter:before),
-    :global(.splitpanes__splitter:after) {
-        background-color: var(--fallback-bc,oklch(var(--bc)/1)); 
+    :global(.splitpanes.default-theme .splitpanes__splitter) {
+        background-color: var(--fallback-b3,oklch(var(--b3)/1));
+        border-color: var(--fallback-b3,oklch(var(--b3)/1));
+        min-width: 6px;
+        min-height: 6px;
+    }
+    
+    :global(.splitpanes.default-theme .splitpanes__splitter:hover) {
+        background-color: var(--fallback-bc,oklch(var(--bc)/0.2));
+    }
+
+    :global(.splitpanes.default-theme .splitpanes__splitter:before),
+    :global(.splitpanes.default-theme .splitpanes__splitter:after) {
+        background-color: var(--fallback-bc,oklch(var(--bc)/0.5)); 
     }
 </style>
