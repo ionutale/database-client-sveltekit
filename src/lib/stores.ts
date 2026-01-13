@@ -18,3 +18,19 @@ export interface QueryResultState {
 }
 
 export const queryResult = writable<QueryResultState>({ columns: [], rows: [] });
+
+export interface Tab {
+    id: number;
+    type: 'query' | 'table';
+    name: string;
+    // Query specific
+    value?: string;
+    // Table specific
+    tableName?: string;
+    connection?: Connection;
+}
+
+export const tabs = writable<Tab[]>([
+    { id: 1, type: 'query', name: 'Script-1', value: 'SELECT * FROM sqlite_master;' }
+]);
+export const activeTabId = writable<number>(1);

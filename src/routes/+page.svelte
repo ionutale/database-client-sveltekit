@@ -4,28 +4,37 @@
     import SqlEditor from '$lib/components/SqlEditor.svelte';
     import TopToolbar from '$lib/components/TopToolbar.svelte';
     import BottomTabs from '$lib/components/BottomTabs.svelte';
-    import { activeConnection } from '$lib/stores';
-
-    // Editor tabs state
-    let editors = $state([
-        { id: 1, name: 'Script-1', value: 'SELECT * FROM sqlite_master;' }
-    ]);
-    let activeEditorIdx = $state(0);
+    import TableDetailView from '$lib/components/TableDetailView.svelte';
+    import { activeConnection, tabs, activeTabId, type Tab } from '$lib/stores';
 
     let sqlEditorRef: SqlEditor | undefined = $state(undefined);
     let showRight = $state(false);
     let activeSidebar = $state('explorer');
     let sidebarCollapsed = $state(false);
 
+    let activeIndex = $derived($tabs.length > 0 ? Math.min($activeTabId, $tabs.length - 1) : 0);
+
     function newTab() {
-        editors.push({ id: Date.now(), name: `Script-${editors.length + 1}`, value: '' });
-        activeEditorIdx = editors.length - 1;
+        tabs.update(t => {
+            const newT: Tab = { id: Date.now(), type: 'query', name: `Script-${t.length + 1}`, value: '' };
+            return [...t, newT];
+        });
+        activeTabId.set($tabs.length - 1);
     }
 
-    function closeTab(i: number) {
-        if (editors.length === 1) return;
-        editors.splice(i, 1);
-        activeEditorIdx = Math.max(0, Math.min(activeEditorIdx, editors.length - 1));
+    function closeTab(i: number, e: Event) {
+        e.stopPropagation();
+        if ($tabs.length === 1) return;
+        
+        tabs.update(t => {
+            const newT = [...t];
+            newT.splice(i, 1);
+            return newT;
+        });
+        
+        if ($activeTabId >= $tabs.length) {
+            activeTabId.set($tabs.length - 1);
+        }
     }
 
     function runActive() {
@@ -34,6 +43,10 @@
 
     function toggleSidebar() {
         sidebarCollapsed = !sidebarCollapsed;
+    }
+    
+    function selectTab(i: number) {
+        activeTabId.set(i);
     }
 </script>
 
@@ -82,15 +95,6 @@
                 </svg>
             </button>
             <div class="flex-1"></div>
-            <button
-                class="p-2 rounded-lg text-base-content/40 hover:text-base-content hover:bg-base-300/60 transition-all duration-200 hover:scale-105"
-                title="Settings"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                </svg>
-            </button>
         </div>
 
         <Splitpanes class="default-theme">
@@ -98,65 +102,53 @@
             {#if !sidebarCollapsed}
             <Pane size={18} minSize={12} maxSize={30}>
                 <div class="h-full flex flex-col bg-base-200/80 backdrop-blur-md border-r border-base-300/50 shadow-lg">
-                    <div class="h-8 flex items-center px-3 border-b border-base-300/50 bg-base-300/30">
-                        <span class="text-[10px] font-bold uppercase tracking-wider opacity-70 text-base-content/80">
-                            {activeSidebar}
-                        </span>
-                    </div>
-                    <div class="flex-1 overflow-auto">
-                        {#if activeSidebar === 'explorer'}
-                            <ConnectionList />
-                        {:else if activeSidebar === 'history'}
-                            <div class="p-4 text-xs text-base-content/40 italic flex flex-col items-center justify-center h-full gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 opacity-30">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                                </svg>
-                                <span>No query history yet.</span>
-                            </div>
-                        {:else if activeSidebar === 'saved'}
-                            <div class="p-4 text-xs text-base-content/40 italic flex flex-col items-center justify-center h-full gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 opacity-30">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
-                                </svg>
-                                <span>Save queries to see them here.</span>
-                            </div>
-                        {/if}
-                    </div>
+                    {#if activeSidebar === 'explorer'}
+                        <ConnectionList />
+                    {:else if activeSidebar === 'history'}
+                        <div class="p-4 text-sm text-base-content/50 italic">Query history coming soon...</div>
+                    {:else if activeSidebar === 'saved'}
+                         <div class="p-4 text-sm text-base-content/50 italic">Saved queries coming soon...</div>
+                    {/if}
                 </div>
             </Pane>
             {/if}
 
-            <!-- Center: Editor + Results -->
-            <Pane size={showRight ? 60 : 82} minSize={40}>
-                <div class="h-full flex flex-col bg-base-100/80 backdrop-blur-sm">
-                    <!-- Editor Tabs Bar -->
-                    <div class="h-8 bg-base-200/80 backdrop-blur-md border-b border-base-300/50 flex items-center px-1 gap-0.5 overflow-x-auto shadow-sm">
-                        {#each editors as ed, i (ed.id)}
-                            <div
-                                class="group flex items-center gap-1 px-3 py-1 text-xs rounded-t border-b-2 transition-all duration-200 cursor-pointer outline-none hover:bg-base-100/50
-                                       {i === activeEditorIdx
-                                           ? 'bg-base-100 border-primary text-base-content font-medium shadow-sm'
-                                           : 'bg-base-200/50 border-transparent text-base-content/60 hover:text-base-content'}"
-                                onclick={() => activeEditorIdx = i}
-                                onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && (activeEditorIdx = i)}
-                                role="button"
-                                tabindex="0"
+            <!-- Center: Editor / Tabs -->
+            <Pane size={50}>
+                <div class="h-full flex flex-col bg-base-100">
+                    <!-- Tabs Header -->
+                    <div class="flex items-center bg-base-200/50 border-b border-base-300/50 overflow-x-auto min-h-[36px] no-scrollbar">
+                        {#each $tabs as tab, i}
+                            <button
+                                class="group relative px-3 py-2 text-xs flex items-center gap-2 border-r border-base-300/30 min-w-[120px] max-w-[200px] transition-all duration-200
+                                       {activeIndex === i 
+                                           ? 'bg-base-100 text-primary font-medium shadow-[0_-2px_0_0_currentColor_inset]' 
+                                           : 'text-base-content/60 hover:bg-base-200 hover:text-base-content'}"
+                                onclick={() => selectTab(i)}
+                                title={tab.name}
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 opacity-60">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                                </svg>
-                                <span class="truncate max-w-24">{ed.name}</span>
+                                {#if tab.type === 'query'}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 opacity-70">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75v-4.5m0 4.5h4.5m-4.5 0 6-6m-6 6-6 6m6-6v4.5m0-4.5h-4.5" />
+                                    </svg>
+                                {:else if tab.type === 'table'}
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 opacity-70">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M13.125 16.5h7.5" />
+                                    </svg>
+                                {/if}
+                                <span class="truncate max-w-[120px]">{tab.name}</span>
                                 <button
-                                    class="ml-1 w-4 h-4 rounded hover:bg-base-300/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                    onclick={(e: MouseEvent) => { e.stopPropagation(); closeTab(i); }}
-                                    aria-label="Close tab"
+                                    class="ml-auto opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-base-300 text-base-content/50 hover:text-error transition-all"
+                                    onclick={(e) => closeTab(i, e)}
+                                    title="Close"
                                 >
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
-                            </div>
+                            </button>
                         {/each}
+                        
                         <button
                             class="w-6 h-6 flex items-center justify-center text-base-content/40 hover:text-base-content hover:bg-base-100/50 rounded ml-1 transition-all duration-200 hover:scale-110"
                             onclick={newTab}
@@ -169,16 +161,29 @@
                         </button>
                     </div>
 
-                    <!-- Vertical split: SQL Editor (top) / Results (bottom) -->
-                    <div class="flex-1 overflow-hidden">
-                        <Splitpanes horizontal class="default-theme">
-                            <Pane size={55} minSize={20}>
-                                <SqlEditor bind:value={editors[activeEditorIdx].value} bind:this={sqlEditorRef} />
-                            </Pane>
-                            <Pane size={45} minSize={15}>
-                                <BottomTabs />
-                            </Pane>
-                        </Splitpanes>
+                    <!-- Content Area -->
+                    <div class="flex-1 overflow-hidden relative">
+                        {#if $tabs.length > 0 && $tabs[activeIndex]}
+                            {#if $tabs[activeIndex].type === 'table'}
+                                <TableDetailView 
+                                    tableName={$tabs[activeIndex].tableName} 
+                                    connection={$tabs[activeIndex].connection} 
+                                />
+                            {:else}
+                                <Splitpanes horizontal class="default-theme">
+                                    <Pane size={55} minSize={20}>
+                                        <SqlEditor bind:value={$tabs[activeIndex].value} bind:this={sqlEditorRef} />
+                                    </Pane>
+                                    <Pane size={45} minSize={15}>
+                                        <BottomTabs />
+                                    </Pane>
+                                </Splitpanes>
+                            {/if}
+                        {:else}
+                            <div class="flex items-center justify-center h-full text-base-content/30 italic">
+                                No active tab
+                            </div>
+                        {/if}
                     </div>
                 </div>
             </Pane>
@@ -186,7 +191,8 @@
             <!-- Right: Properties Panel (optional) -->
             {#if showRight}
             <Pane size={22} minSize={15} maxSize={35}>
-                <div class="h-full bg-base-100/90 backdrop-blur-md border-l border-base-300/50 flex flex-col shadow-lg">
+                 <div class="h-full bg-base-100/90 backdrop-blur-md border-l border-base-300/50 flex flex-col shadow-lg">
+                    <!-- ... properties content ... -->
                     <div class="h-8 bg-base-200/80 backdrop-blur-md border-b border-base-300/50 flex items-center px-3">
                         <span class="text-xs font-semibold text-base-content/70 uppercase tracking-wide">Properties</span>
                     </div>
@@ -205,9 +211,6 @@
                             </div>
                         {:else}
                             <div class="text-base-content/40 text-xs italic flex flex-col items-center justify-center h-full gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 opacity-30">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281Z" />
-                                </svg>
                                 <span>Select a connection to view properties.</span>
                             </div>
                         {/if}
@@ -217,65 +220,4 @@
             {/if}
         </Splitpanes>
     </div>
-
-    <!-- Status Bar -->
-    <div class="h-6 bg-neutral/90 backdrop-blur-md flex items-center px-3 text-[10px] text-neutral-content/80 justify-between select-none border-t border-neutral-focus/50 shadow-lg">
-        <div class="flex gap-4">
-            <span class="flex items-center gap-2">
-                {#if $activeConnection}
-                    <div class="w-2 h-2 rounded-full bg-success animate-pulse"></div>
-                    <span>Connected: {$activeConnection.name}</span>
-                {:else}
-                    <div class="w-2 h-2 rounded-full bg-base-content/30"></div>
-                    <span>Disconnected</span>
-                {/if}
-            </span>
-        </div>
-        <div class="flex gap-4">
-            <span class="opacity-60">SvelteKit SQL Client</span>
-            <span class="bg-neutral-focus/50 px-2 py-0.5 rounded text-[9px] font-medium">v1.0.0</span>
-        </div>
-    </div>
 </div>
-
-<style>
-    :global(body) {
-        margin: 0;
-        padding: 0;
-        overflow: hidden;
-    }
-
-    /* Splitpanes default theme */
-    :global(.default-theme.splitpanes) {
-        display: flex;
-        width: 100%;
-        height: 100%;
-    }
-    :global(.default-theme.splitpanes--vertical) {
-        flex-direction: row;
-    }
-    :global(.default-theme.splitpanes--horizontal) {
-        flex-direction: column;
-    }
-    :global(.default-theme .splitpanes__pane) {
-        position: relative;
-        overflow: hidden;
-    }
-    :global(.default-theme .splitpanes__splitter) {
-        background-color: oklch(var(--b3));
-        position: relative;
-        flex-shrink: 0;
-        z-index: 1;
-    }
-    :global(.default-theme .splitpanes__splitter:hover) {
-        background-color: oklch(var(--p));
-    }
-    :global(.default-theme.splitpanes--vertical > .splitpanes__splitter) {
-        width: 4px;
-        cursor: col-resize;
-    }
-    :global(.default-theme.splitpanes--horizontal > .splitpanes__splitter) {
-        height: 4px;
-        cursor: row-resize;
-    }
-</style>

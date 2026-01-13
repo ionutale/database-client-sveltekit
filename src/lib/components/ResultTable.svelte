@@ -1,6 +1,12 @@
 <script lang="ts">
     import { queryResult } from '$lib/stores';
 
+    let { 
+        result = null
+    } : { result?: { rows: any[], columns: string[], loading?: boolean } | null } = $props();
+
+    let activeResult = $derived(result ?? $queryResult);
+
     let sortColumn = $state<string | null>(null);
     let sortDirection = $state<'asc' | 'desc'>('asc');
     let searchTerm = $state('');
@@ -15,9 +21,9 @@
     }
 
     function getSortedRows() {
-        if (!$queryResult.rows || !sortColumn) return $queryResult.rows || [];
+        if (!activeResult.rows || !sortColumn) return activeResult.rows || [];
 
-        return [...$queryResult.rows].sort((a, b) => {
+        return [...activeResult.rows].sort((a, b) => {
             const aVal = a[sortColumn!];
             const bVal = b[sortColumn!];
 
@@ -47,7 +53,7 @@
         if (!searchTerm) return rows;
 
         return rows.filter(row =>
-            $queryResult.columns?.some(col =>
+            activeResult.columns?.some(col =>
                 String(row[col] ?? '').toLowerCase().includes(searchTerm.toLowerCase())
             )
         );
@@ -55,11 +61,11 @@
 
     function exportToCSV() {
         const rows = getFilteredRows();
-        if (!rows.length || !$queryResult.columns) return;
+        if (!rows.length || !activeResult.columns) return;
 
-        const headers = $queryResult.columns.join(',');
+        const headers = activeResult.columns.join(',');
         const csvData = rows.map(row =>
-            $queryResult.columns!.map(col => {
+            activeResult.columns!.map(col => {
                 const value = row[col];
                 // Escape commas and quotes in CSV
                 const str = String(value ?? '');
@@ -81,11 +87,11 @@
 
     function copyToClipboard() {
         const rows = getFilteredRows();
-        if (!rows.length || !$queryResult.columns) return;
+        if (!rows.length || !activeResult.columns) return;
 
-        const headers = $queryResult.columns.join('\t');
+        const headers = activeResult.columns.join('\t');
         const tsvData = rows.map(row =>
-            $queryResult.columns!.map(col => String(row[col] ?? '')).join('\t')
+            activeResult.columns!.map(col => String(row[col] ?? '')).join('\t')
         ).join('\n');
 
         const tsv = `${headers}\n${tsvData}`;
@@ -96,7 +102,7 @@
 </script>
 
 <div class="h-full flex flex-col bg-base-100/80 backdrop-blur-sm relative">
-    {#if $queryResult.loading}
+    {#if activeResult.loading}
         <div class="absolute inset-0 z-10 flex items-center justify-center bg-base-100/50 backdrop-blur-sm rounded-lg">
             <div class="flex flex-col items-center gap-3">
                 <span class="loading loading-spinner loading-lg text-primary"></span>
@@ -105,27 +111,27 @@
         </div>
     {/if}
 
-    {#if $queryResult.error}
+    {#if activeResult.error}
         <div class="p-6 h-full flex items-center justify-center">
             <div class="alert alert-error max-w-lg shadow-lg border border-error/20">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <div class="flex flex-col">
                     <span class="font-bold text-sm uppercase opacity-80">Query Error</span>
-                    <span class="font-mono text-sm whitespace-pre-wrap mt-1">{$queryResult.error}</span>
+                    <span class="font-mono text-sm whitespace-pre-wrap mt-1">{activeResult.error}</span>
                 </div>
             </div>
         </div>
-    {:else if $queryResult.message}
+    {:else if activeResult.message}
          <div class="p-6 h-full flex items-center justify-center">
             <div class="alert alert-success max-w-lg shadow-lg border border-success/20">
                 <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <div class="flex flex-col">
                     <span class="font-bold text-sm uppercase opacity-80">Success</span>
-                    <span class="font-mono text-sm mt-1">{$queryResult.message}</span>
+                    <span class="font-mono text-sm mt-1">{activeResult.message}</span>
                 </div>
             </div>
         </div>
-    {:else if $queryResult.columns?.length > 0}
+    {:else if activeResult.columns?.length > 0}
         <!-- Toolbar -->
         <div class="h-10 bg-base-200/80 backdrop-blur-md border-b border-base-300/50 flex items-center px-3 gap-3 shadow-sm">
             <div class="flex items-center gap-2">
@@ -163,7 +169,7 @@
             <div class="flex-1"></div>
 
             <div class="text-xs text-base-content/60 bg-base-300/50 px-2 py-1 rounded">
-                {filteredRows.length} of {$queryResult.rows?.length ?? 0} rows
+                {filteredRows.length} of {activeResult.rows?.length ?? 0} rows
             </div>
         </div>
 
@@ -173,7 +179,7 @@
                 <thead>
                     <tr class="bg-base-200/80 backdrop-blur-md text-base-content/70 border-b border-base-300/50">
                          <th class="w-12 bg-base-300/50 text-center font-mono opacity-60 border-r border-base-300/30">#</th>
-                        {#each $queryResult.columns as col}
+                        {#each activeResult.columns as col}
                             <th class="font-bold border-b border-base-300/30 py-3 px-4">
                                 <button
                                     onclick={() => toggleSort(col)}
@@ -195,7 +201,7 @@
                     {#each filteredRows as row, i}
                         <tr class="hover:bg-primary/5 transition-all duration-150 group border-b border-base-200/30">
                             <th class="bg-base-200/30 text-center opacity-50 font-normal select-none border-r border-base-300/20 group-hover:bg-base-200/50">{i + 1}</th>
-                            {#each $queryResult.columns as col}
+                            {#each activeResult.columns as col}
                             <td class="max-w-xs truncate border-b border-base-200/20 group-hover:border-primary/20 px-4 py-2" title={String(row[col] ?? '')}>
                                 {#if row[col] === null}
                                     <span class="text-base-content/30 italic bg-base-300/30 px-2 py-0.5 rounded text-xs border border-base-300/20">NULL</span>
@@ -220,16 +226,16 @@
         <div class="flex items-center justify-between px-4 py-2 bg-base-200/60 border-t border-base-300/50 text-xs text-base-content/60 min-h-8 backdrop-blur-sm">
             <div class="flex items-center gap-4">
                 <span>Query executed successfully</span>
-                {#if $queryResult.rows && $queryResult.rows.length > 0}
+                {#if activeResult.rows && activeResult.rows.length > 0}
                     <span class="text-primary font-medium">
-                        {$queryResult.rows.length} row{$queryResult.rows.length === 1 ? '' : 's'} returned
+                        {activeResult.rows.length} row{activeResult.rows.length === 1 ? '' : 's'} returned
                     </span>
                 {/if}
             </div>
             <div class="flex items-center gap-4">
                 <span>Execution time: 12ms</span>
                 <span class="bg-base-300/50 px-2 py-0.5 rounded text-[10px] font-medium">
-                    {$queryResult.columns?.length ?? 0} column{$queryResult.columns?.length === 1 ? '' : 's'}
+                    {activeResult.columns?.length ?? 0} column{activeResult.columns?.length === 1 ? '' : 's'}
                 </span>
             </div>
         </div>
