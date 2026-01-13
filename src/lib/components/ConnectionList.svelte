@@ -28,7 +28,7 @@
                         class="flex gap-3 py-2 px-3 rounded-md hover:bg-base-100 transition-colors"
                         class:active={$activeConnection?.id === conn.id}
                         class:bg-base-100={$activeConnection?.id === conn.id}
-                        class:text-primary-content={$activeConnection?.id === conn.id && false} /* Don't force text color on active if using bg-base-100 */
+                        class:text-primary-content={$activeConnection?.id === conn.id && false}
                         onclick={() => select(conn)}
                     >
                         <div class="avatar placeholder">

@@ -17,13 +17,16 @@
     Otherwise, create the project structure manually using available file creation tools.
     -->
 
-- [ ] Customize the Project
+- [x] Customize the Project
     <!--
     Verify that all previous steps have been completed successfully and you have marked the step as completed.
     Develop a plan to modify codebase according to user requirements.
     Apply modifications using appropriate tools and user-provided references.
     Skip this step for "Hello World" projects.
     -->
+    - Applied "Dracula" theme.
+    - Updated to modern 3-pane split layout with custom CSS.
+    - Polished ConnectionList, SqlEditor, and ResultTable components.
 
 - [ ] Install Required Extensions
     <!-- ONLY install extensions provided mentioned in the get_project_setup_info. Skip this step otherwise and mark as completed. -->
