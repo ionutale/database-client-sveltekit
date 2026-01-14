@@ -4,9 +4,11 @@
 
     let { tableName, connection } = $props();
 
-    let activeTab = $state<'data' | 'properties' | 'indexes' | 'ddl'>('data');
+    let activeTab = $state<'data' | 'properties' | 'keys' | 'foreign-keys' | 'indexes' | 'ddl'>('data');
     let dataResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     let propertiesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
+    let keysResult = $state({ rows: [], columns: [], loading: false, error: undefined });
+    let foreignKeysResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     let indexesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     let ddlResult = $state({ content: '', loading: false, error: undefined });
     
@@ -22,6 +24,10 @@
             fetchData();
         } else if (activeTab === 'properties') {
             fetchProperties();
+        } else if (activeTab === 'keys') {
+            fetchKeys();
+        } else if (activeTab === 'foreign-keys') {
+            fetchForeignKeys();
         } else if (activeTab === 'indexes') {
             fetchIndexes();
         } else if (activeTab === 'ddl') {
@@ -91,6 +97,66 @@
         }
     }
 
+    async function fetchKeys() {
+        if (!connection || !tableName) return;
+        keysResult = { ...keysResult, loading: true };
+        try {
+            const res = await fetch('/api/metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'list-primary-keys',
+                    type: connection.type,
+                    connectionString: connection.connectionString,
+                    tableName
+                })
+            });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                keysResult = { 
+                    columns: ['columnName', 'pkPosition'], 
+                    rows: data, 
+                    loading: false, 
+                    error: undefined 
+                };
+            } else {
+                keysResult = { ...keysResult, loading: false, error: data.error };
+            }
+        } catch (e: any) {
+            keysResult = { ...keysResult, loading: false, error: e.message };
+        }
+    }
+
+    async function fetchForeignKeys() {
+        if (!connection || !tableName) return;
+        foreignKeysResult = { ...foreignKeysResult, loading: true };
+        try {
+            const res = await fetch('/api/metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'list-foreign-keys',
+                    type: connection.type,
+                    connectionString: connection.connectionString,
+                    tableName
+                })
+            });
+            const data = await res.json();
+             if (Array.isArray(data)) {
+                foreignKeysResult = { 
+                    columns: ['columnName', 'referencedTable', 'referencedColumn'], 
+                    rows: data, 
+                    loading: false, 
+                    error: undefined 
+                };
+            } else {
+                foreignKeysResult = { ...foreignKeysResult, loading: false, error: data.error };
+            }
+        } catch (e: any) {
+            foreignKeysResult = { ...foreignKeysResult, loading: false, error: e.message };
+        }
+    }
+
     async function fetchIndexes() {
         if (!connection || !tableName) return;
         indexesResult = { ...indexesResult, loading: true };
@@ -149,14 +215,14 @@
 <div class="h-full flex flex-col bg-base-100">
     <!-- Sub-tabs Header -->
     <div class="h-8 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none shrink-0">
-        {#each ['Data', 'Properties', 'Indexes', 'DDL'] as tab}
+        {#each ['Data', 'Properties', 'Keys', 'Foreign Keys', 'Indexes', 'DDL'] as tab}
             <button 
                 class="px-4 py-1.5 text-xs rounded transition-all
-                       {activeTab === tab.toLowerCase() 
+                       {activeTab === tab.toLowerCase().replace(' ', '-') 
                            ? 'bg-base-100 text-primary font-bold shadow-sm' 
                            : 'text-base-content/40 hover:text-base-content hover:bg-base-300/50'}"
                 onclick={() => {
-                    activeTab = tab.toLowerCase() as any;
+                    activeTab = tab.toLowerCase().replace(' ', '-') as any;
                     fetchDataForCurrentTab();
                 }}
             >
@@ -171,6 +237,10 @@
             <ResultTable result={dataResult} />
         {:else if activeTab === 'properties'}
             <ResultTable result={propertiesResult} />
+        {:else if activeTab === 'keys'}
+             <ResultTable result={keysResult} />
+        {:else if activeTab === 'foreign-keys'}
+             <ResultTable result={foreignKeysResult} />
         {:else if activeTab === 'indexes'}
              <ResultTable result={indexesResult} />
         {:else if activeTab === 'ddl'}

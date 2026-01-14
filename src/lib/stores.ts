@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store';
+import { browser } from '$app/environment';
 
 export type DbType = 'sqlite' | 'postgres' | 'mysql' | 'mssql' | 'oracle';
 
@@ -16,15 +17,51 @@ export interface Connection {
     projectId?: string;
 }
 
-export const projects = writable<Project[]>([
+export interface HistoryItem {
+    id: string;
+    timestamp: number;
+    query: string;
+    connectionId: string;
+    status: 'success' | 'error';
+    duration?: number;
+    rowsAffected?: number;
+}
+
+// Helper for persistence
+function persistedWritable<T>(key: string, initialValue: T) {
+    const store = writable<T>(initialValue);
+    
+    if (browser) {
+        const stored = localStorage.getItem(key);
+        if (stored) {
+            try {
+                store.set(JSON.parse(stored));
+            } catch (e) {
+                console.error(`Failed to parse stored value for ${key}`, e);
+            }
+        }
+        
+        store.subscribe(value => {
+            if (browser) {
+                localStorage.setItem(key, JSON.stringify(value));
+            }
+        });
+    }
+    
+    return store;
+}
+
+export const projects = persistedWritable<Project[]>('projects', [
     { id: 'default', name: 'Default', connections: ['1'] }
 ]);
 
-export const connections = writable<Connection[]>([
+export const connections = persistedWritable<Connection[]>('connections', [
     { id: '1', name: 'Demo SQLite', type: 'sqlite', connectionString: './test.db', projectId: 'default' }
 ]);
 
-export const activeConnection = writable<Connection | null>(null); // for backward compatibility, but will deprecate
+export const queryHistory = persistedWritable<HistoryItem[]>('queryHistory', []);
+
+export const activeConnection = writable<Connection | null>(null);
 
 export interface QueryResultState {
     columns: string[];
@@ -48,6 +85,6 @@ export interface Tab {
 }
 
 export const tabs = writable<Tab[]>([
-    { id: 1, type: 'query', name: 'Script-1', value: 'SELECT * FROM sqlite_master;', connectionId: '1' }
+    { id: 1, type: 'query', name: 'Script-1', value: 'SELECT * FROM sqlite_schema;', connectionId: '1' }
 ]);
 export const activeTabId = writable<number | string>(1);

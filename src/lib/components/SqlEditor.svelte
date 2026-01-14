@@ -1,11 +1,13 @@
 <script lang="ts">
     import CodeMirror from "svelte-codemirror-editor";
     import { sql } from "@codemirror/lang-sql";
-    import { activeConnection, queryResult, connections } from '$lib/stores';
+    import { activeConnection, queryResult, connections, queryHistory, type HistoryItem } from '$lib/stores';
+    import HistoryModal from './HistoryModal.svelte';
 
     let { value = $bindable("SELECT * FROM sqlite_schema;") } = $props();
 
     let editor: any = $state(null);
+    let isHistoryOpen = $state(false);
 
     export async function runQuery(selectedText?: string) {
         const connId = $activeConnection?.id;
@@ -22,8 +24,10 @@
 
         queryResult.set({ columns: [], rows: [], loading: true });
 
+        const startTime = Date.now();
+        const queryToRun = selectedText || value;
+
         try {
-            const queryToRun = selectedText || value;
             const res = await fetch('/api/query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -34,6 +38,7 @@
                 })
             });
             const data = await res.json();
+            
             queryResult.set({ 
                 columns: data.columns || [], 
                 rows: data.rows || [], 
@@ -41,8 +46,33 @@
                 error: data.error,
                 loading: false 
             });
+
+            // Save to history
+            const historyItem: HistoryItem = {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                query: queryToRun,
+                connectionId: conn.id,
+                status: data.error ? 'error' : 'success',
+                duration: Date.now() - startTime,
+                rowsAffected: data.rows?.length || 0
+            };
+            
+            // Limit history to last 100 items
+            queryHistory.update(h => [...h, historyItem].slice(-100));
+
         } catch (e: any) {
             queryResult.set({ columns: [], rows: [], error: e.message, loading: false });
+             // Save error to history
+             const historyItem: HistoryItem = {
+                id: crypto.randomUUID(),
+                timestamp: Date.now(),
+                query: queryToRun,
+                connectionId: conn.id,
+                status: 'error',
+                duration: Date.now() - startTime
+            };
+            queryHistory.update(h => [...h, historyItem].slice(-100));
         }
     }
     
@@ -76,7 +106,7 @@
          
          <div class="join">
              <button class="btn btn-xs btn-ghost join-item" disabled>Format</button>
-             <button class="btn btn-xs btn-ghost join-item" disabled>History</button>
+             <button class="btn btn-xs btn-ghost join-item" onclick={() => isHistoryOpen = true}>History</button>
              <button class="btn btn-xs btn-ghost join-item" onclick={() => runSelected()}>Run Selected</button>
          </div>
 
@@ -120,4 +150,6 @@
             class="h-full w-full" 
         />
     </div>
+
+    <HistoryModal bind:open={isHistoryOpen} onSelect={(q) => value = q} />
 </div>

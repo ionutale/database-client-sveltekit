@@ -120,4 +120,33 @@ export class MySQLDriver implements DatabaseDriver {
         }
         return '';
     }
+
+    async getPrimaryKeys(tableName: string): Promise<any[]> {
+        if (!this.connection) await this.connect();
+        const query = `SHOW KEYS FROM \`${tableName}\` WHERE Key_name = 'PRIMARY'`;
+        const result = await this.execute(query);
+         if (result.rows) {
+            return result.rows.map((r: any) => ({
+                columnName: r.Column_name,
+                pkPosition: r.Seq_in_index
+            }));
+        }
+        return [];
+    }
+
+    async getForeignKeys(tableName: string): Promise<any[]> {
+         if (!this.connection) await this.connect();
+         const query = `
+            SELECT 
+                COLUMN_NAME as columnName, 
+                REFERENCED_TABLE_NAME as referencedTable, 
+                REFERENCED_COLUMN_NAME as referencedColumn
+            FROM information_schema.KEY_COLUMN_USAGE
+            WHERE TABLE_SCHEMA = DATABASE()
+              AND TABLE_NAME = '${tableName}'
+              AND REFERENCED_TABLE_NAME IS NOT NULL
+         `;
+         const result = await this.execute(query);
+         return result.rows || [];
+    }
 }

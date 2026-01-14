@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getTables, getColumns, getViews, getIndexes, getDDL, type DbType } from '$lib/server/db';
+import { getTables, getColumns, getViews, getIndexes, getDDL, getPrimaryKeys, getForeignKeys, type DbType } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -31,6 +31,14 @@ export const POST: RequestHandler = async ({ request }) => {
             case 'get-ddl':
                 if (!tableName) return json({ error: 'Missing tableName' }, { status: 400 });
                 result = await getDDL(type as DbType, connectionString, tableName);
+                break;
+            case 'list-primary-keys':
+                if (!tableName) return json({ error: 'Missing tableName' }, { status: 400 });
+                result = await getPrimaryKeys(type as DbType, connectionString, tableName);
+                break;
+           case 'list-foreign-keys':
+                if (!tableName) return json({ error: 'Missing tableName' }, { status: 400 });
+                result = await getForeignKeys(type as DbType, connectionString, tableName);
                 break;
             default:
                 return json({ error: 'Invalid action' }, { status: 400 });

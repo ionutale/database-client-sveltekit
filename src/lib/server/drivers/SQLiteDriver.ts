@@ -103,4 +103,37 @@ export class SQLiteDriver implements DatabaseDriver {
         }
         return '';
     }
+
+    async getPrimaryKeys(tableName: string): Promise<any[]> {
+        if (!this.db) await this.connect();
+        const query = `PRAGMA table_info("${tableName}")`;
+        const result = await this.execute(query);
+        if (result.rows) {
+             return result.rows
+                .filter((r: any) => r.pk > 0)
+                .map((r: any) => ({
+                    columnName: r.name,
+                    pkPosition: r.pk
+                }));
+        }
+        return [];
+    }
+
+    async getForeignKeys(tableName: string): Promise<any[]> {
+        if (!this.db) await this.connect();
+        const query = `PRAGMA foreign_key_list("${tableName}")`;
+        const result = await this.execute(query);
+        if (result.rows) {
+            // id, seq, table, from, to, on_update, on_delete, match
+             return result.rows.map((r: any) => ({
+                id: r.id,
+                columnName: r.from,
+                referencedTable: r.table,
+                referencedColumn: r.to,
+                onUpdate: r.on_update,
+                onDelete: r.on_delete
+             }));
+        }
+        return [];
+    }
 }

@@ -63,3 +63,23 @@ export async function getDDL(type: DbType, connectionString: string, tableName: 
         await driver.disconnect();
     }
 }
+
+export async function getPrimaryKeys(type: DbType, connectionString: string, tableName: string) {
+    const driver = DriverFactory.createDriver(type, connectionString);
+    try {
+        await driver.connect();
+        return await driver.getPrimaryKeys(tableName);
+    } finally {
+        await driver.disconnect();
+    }
+}
+
+export async function getForeignKeys(type: DbType, connectionString: string, tableName: string) {
+    const driver = DriverFactory.createDriver(type, connectionString);
+    try {
+        await driver.connect();
+        return await driver.getForeignKeys(tableName);
+    } finally {
+        await driver.disconnect();
+    }
+}

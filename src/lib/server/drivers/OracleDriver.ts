@@ -121,4 +121,12 @@ export class OracleDriver implements DatabaseDriver {
     async getDDL(tableName: string): Promise<string> {
         return '';
     }
+
+    async getPrimaryKeys(tableName: string): Promise<any[]> {
+        return [];
+    }
+
+    async getForeignKeys(tableName: string): Promise<any[]> {
+        return [];
+    }
 }

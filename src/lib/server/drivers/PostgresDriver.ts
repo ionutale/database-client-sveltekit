@@ -103,4 +103,40 @@ export class PostgresDriver implements DatabaseDriver {
     async getDDL(tableName: string): Promise<string> {
         return `-- DDL for ${tableName} (Not implemented for Postgres yet)`;
     }
+
+    async getPrimaryKeys(tableName: string): Promise<any[]> {
+        if (!this.client) await this.connect();
+        const query = `
+            SELECT kcu.column_name as "columnName", kcu.ordinal_position as "pkPosition"
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu
+              ON tc.constraint_name = kcu.constraint_name
+              AND tc.table_schema = kcu.table_schema
+            WHERE tc.constraint_type = 'PRIMARY KEY'
+              AND tc.table_name = '${tableName}'
+              AND tc.table_schema = 'public'
+        `;
+        const result = await this.execute(query);
+        return result.rows || [];
+    }
+
+    async getForeignKeys(tableName: string): Promise<any[]> {
+        if (!this.client) await this.connect();
+        const query = `
+            SELECT
+                kcu.column_name as "columnName",
+                ccu.table_name AS "referencedTable",
+                ccu.column_name AS "referencedColumn"
+            FROM information_schema.key_column_usage kcu
+            JOIN information_schema.constraint_column_usage ccu
+              ON kcu.constraint_name = ccu.constraint_name
+            JOIN information_schema.table_constraints tc
+              ON kcu.constraint_name = tc.constraint_name
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_name = '${tableName}'
+              AND tc.table_schema = 'public'
+        `;
+        const result = await this.execute(query);
+        return result.rows || [];
+    }
 }

@@ -28,6 +28,8 @@ export interface DatabaseDriver {
     getViews(): Promise<TableInfo[]>;
     getIndexes(tableName?: string): Promise<any[]>;
     getDDL(tableName: string): Promise<string>;
+    getPrimaryKeys(tableName: string): Promise<any[]>;
+    getForeignKeys(tableName: string): Promise<any[]>;
 }
     // getPrimaryKeys(tableName: string): Promise<any[]>;
     // getForeignKeys(tableName: string): Promise<any[]>;
