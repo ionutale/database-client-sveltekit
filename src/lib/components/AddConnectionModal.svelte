@@ -6,6 +6,39 @@
     let name = $state('');
     let type = $state<DbType>('sqlite');
     let connectionString = $state('');
+    let testing = $state(false);
+    let testError = $state<string | undefined>(undefined);
+    let testSuccess = $state(false);
+
+    async function handleTest() {
+        if (!connectionString) return;
+        testing = true;
+        testError = undefined;
+        testSuccess = false;
+        
+        try {
+            const res = await fetch('/api/metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'list-tables',
+                    type,
+                    connectionString
+                })
+            });
+            
+            if (res.ok) {
+                testSuccess = true;
+            } else {
+                const data = await res.json();
+                testError = data.error || 'Connection failed';
+            }
+        } catch (e: any) {
+            testError = e.message;
+        } finally {
+            testing = false;
+        }
+    }
 
     function handleSave() {
         if (!name || !connectionString) return;
@@ -78,9 +111,25 @@
             </label>
         </div>
 
-        <div class="modal-action">
-            <button class="btn" onclick={handleCancel}>Cancel</button>
-            <button class="btn btn-primary" onclick={handleSave}>Save</button>
+        <div class="modal-action flex justify-between items-center">
+            <div class="mr-auto flex items-center gap-2">
+                 <button class="btn btn-ghost btn-sm" onclick={handleTest} disabled={testing || !connectionString}>
+                    {#if testing}
+                        <span class="loading loading-spinner loading-xs"></span>
+                    {/if}
+                    Test Connection
+                </button>
+                {#if testSuccess}
+                    <span class="text-success text-sm">✓ Connected</span>
+                {:else if testError}
+                     <span class="text-error text-xs max-w-[150px] truncate" title={testError}>✗ {testError}</span>
+                {/if}
+            </div>
+
+            <div class="flex gap-2">
+                <button class="btn" onclick={handleCancel}>Cancel</button>
+                <button class="btn btn-primary" onclick={handleSave} disabled={!name || !connectionString}>Save</button>
+            </div>
         </div>
     </div>
 </div>

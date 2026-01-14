@@ -5,11 +5,19 @@
     let { tableName, connection } = $props();
 
     let activeTab = $state<'data' | 'properties' | 'keys' | 'foreign-keys' | 'indexes' | 'ddl'>('data');
-    let dataResult = $state({ rows: [], columns: [], loading: false, error: undefined });
-    let propertiesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
-    let keysResult = $state({ rows: [], columns: [], loading: false, error: undefined });
-    let foreignKeysResult = $state({ rows: [], columns: [], loading: false, error: undefined });
-    let indexesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
+    
+    interface ResultState {
+        rows: any[];
+        columns: string[];
+        loading: boolean;
+        error?: string;
+    }
+
+    let dataResult = $state<ResultState>({ rows: [], columns: [], loading: false, error: undefined });
+    let propertiesResult = $state<ResultState>({ rows: [], columns: [], loading: false, error: undefined });
+    let keysResult = $state<ResultState>({ rows: [], columns: [], loading: false, error: undefined });
+    let foreignKeysResult = $state<ResultState>({ rows: [], columns: [], loading: false, error: undefined });
+    let indexesResult = $state<ResultState>({ rows: [], columns: [], loading: false, error: undefined });
     let ddlResult = $state({ content: '', loading: false, error: undefined });
     
     import { onMount } from 'svelte';

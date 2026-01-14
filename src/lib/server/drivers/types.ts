@@ -31,7 +31,3 @@ export interface DatabaseDriver {
     getPrimaryKeys(tableName: string): Promise<any[]>;
     getForeignKeys(tableName: string): Promise<any[]>;
 }
-    // getPrimaryKeys(tableName: string): Promise<any[]>;
-    // getForeignKeys(tableName: string): Promise<any[]>;
-    // getIndexes(tableName: string): Promise<any[]>;
-}

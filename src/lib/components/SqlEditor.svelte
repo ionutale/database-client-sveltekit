@@ -151,5 +151,5 @@
         />
     </div>
 
-    <HistoryModal bind:open={isHistoryOpen} onSelect={(q) => value = q} />
+    <HistoryModal bind:open={isHistoryOpen} onSelect={(q: string) => value = q} />
 </div>
