@@ -88,3 +88,5 @@ export const tabs = writable<Tab[]>([
     { id: 1, type: 'query', name: 'Script-1', value: 'SELECT * FROM sqlite_schema;', connectionId: '1' }
 ]);
 export const activeTabId = writable<number | string>(1);
+
+export const theme = persistedWritable<string>('theme', 'dim'); // default theme

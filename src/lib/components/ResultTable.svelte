@@ -60,29 +60,39 @@
     }
 
     function exportToCSV() {
-        const rows = getFilteredRows();
-        if (!rows.length || !activeResult.columns) return;
+        try {
+            const rows = getFilteredRows();
+            if (!rows.length || !activeResult.columns) {
+                // If it's loading, maybe don't alert? But button should be disabled?
+                // For now, simple log/alert
+                console.warn("No rows to export");
+                return;
+            }
 
-        const headers = activeResult.columns.join(',');
-        const csvData = rows.map(row =>
-            activeResult.columns!.map(col => {
-                const value = row[col];
-                // Escape commas and quotes in CSV
-                const str = String(value ?? '');
-                return str.includes(',') || str.includes('"') || str.includes('\n')
-                    ? `"${str.replace(/"/g, '""')}"`
-                    : str;
-            }).join(',')
-        ).join('\n');
+            const headers = activeResult.columns.join(',');
+            const csvData = rows.map(row =>
+                activeResult.columns!.map(col => {
+                    const value = row[col];
+                    // Escape commas and quotes in CSV
+                    const str = String(value ?? '');
+                    return str.includes(',') || str.includes('"') || str.includes('\n')
+                        ? `"${str.replace(/"/g, '""')}"`
+                        : str;
+                }).join(',')
+            ).join('\n');
 
-        const csv = `${headers}\n${csvData}`;
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'query_results.csv';
-        a.click();
-        URL.revokeObjectURL(url);
+            const csv = `${headers}\n${csvData}`;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `query_results_${new Date().toISOString()}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (e: any) {
+            console.error("Export failed", e);
+            alert("Export failed: " + e.message);
+        }
     }
 
     function copyToClipboard() {
