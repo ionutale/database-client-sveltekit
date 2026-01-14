@@ -4,9 +4,11 @@
 
     let { tableName, connection } = $props();
 
-    let activeTab = $state<'properties' | 'data' | 'diagram'>('data');
+    let activeTab = $state<'data' | 'properties' | 'indexes' | 'ddl'>('data');
     let dataResult = $state({ rows: [], columns: [], loading: false, error: undefined });
     let propertiesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
+    let indexesResult = $state({ rows: [], columns: [], loading: false, error: undefined });
+    let ddlResult = $state({ content: '', loading: false, error: undefined });
     
     import { onMount } from 'svelte';
 
@@ -20,6 +22,10 @@
             fetchData();
         } else if (activeTab === 'properties') {
             fetchProperties();
+        } else if (activeTab === 'indexes') {
+            fetchIndexes();
+        } else if (activeTab === 'ddl') {
+            fetchDDL();
         }
     }
 
@@ -56,35 +62,94 @@
         propertiesResult = { ...propertiesResult, loading: true };
         
         try {
-            // SQLite specific schema info
-            const query = `PRAGMA table_info("${tableName}")`;
-            
-            const res = await fetch('/api/query', {
+            const res = await fetch('/api/metadata', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    action: 'list-columns',
                     type: connection.type,
                     connectionString: connection.connectionString,
-                    query
+                    tableName
                 })
             });
             const data = await res.json();
-             propertiesResult = { 
-                columns: data.columns || [], 
-                rows: data.rows || [], 
-                loading: false,
-                error: data.error
-            };
+            // Data is ColumnInfo[]
+            // We want to display it as a table, so we treat it as rows
+            // keys: name, type, nullable, defaultValue, primaryKey
+            if (Array.isArray(data)) {
+                propertiesResult = { 
+                    columns: ['name', 'type', 'nullable', 'defaultValue', 'primaryKey'], 
+                    rows: data, 
+                    loading: false,
+                    error: undefined
+                };
+            } else {
+                 propertiesResult = { ...propertiesResult, loading: false, error: data.error || 'Failed to load' };
+            }
         } catch (e: any) {
              propertiesResult = { ...propertiesResult, loading: false, error: e.message };
+        }
+    }
+
+    async function fetchIndexes() {
+        if (!connection || !tableName) return;
+        indexesResult = { ...indexesResult, loading: true };
+        try {
+            const res = await fetch('/api/metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'list-indexes',
+                    type: connection.type,
+                    connectionString: connection.connectionString,
+                    tableName
+                })
+            });
+            const data = await res.json();
+            if (Array.isArray(data)) {
+                indexesResult = { 
+                    columns: ['name', 'tableName'], 
+                    rows: data, 
+                    loading: false, 
+                    error: undefined 
+                };
+            } else {
+                indexesResult = { ...indexesResult, loading: false, error: data.error };
+            }
+        } catch (e: any) {
+            indexesResult = { ...indexesResult, loading: false, error: e.message };
+        }
+    }
+
+    async function fetchDDL() {
+        if (!connection || !tableName) return;
+        ddlResult = { ...ddlResult, loading: true };
+        try {
+            const res = await fetch('/api/metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'get-ddl',
+                    type: connection.type,
+                    connectionString: connection.connectionString,
+                    tableName
+                })
+            });
+            const data = await res.json(); // returns string directly? No, returns json(result) which is string.
+            // Wait, api returns json(result). If result is string, it is wrapper string.
+            // Client side: await res.json(). 
+            // If API returns `json("CREATE TABLE...")`, then `data` is "CREATE TABLE..."
+            ddlResult = { content: data, loading: false, error: undefined };
+        } catch (e: any) {
+            ddlResult = { ...ddlResult, loading: false, error: e.message };
         }
     }
 </script>
 
 <div class="h-full flex flex-col bg-base-100">
     <!-- Sub-tabs Header -->
-    <div class="h-8 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none">
-        {#each ['Properties', 'Data', 'Diagram'] as tab}
+    <div class="h-8 bg-base-200 border-b border-base-300 flex items-center px-1 gap-0.5 select-none shrink-0">
+        {#each ['Data', 'Properties', 'Indexes', 'DDL'] as tab}
             <button 
                 class="px-4 py-1.5 text-xs rounded transition-all
                        {activeTab === tab.toLowerCase() 
@@ -106,10 +171,18 @@
             <ResultTable result={dataResult} />
         {:else if activeTab === 'properties'}
             <ResultTable result={propertiesResult} />
-        {:else}
-            <div class="flex items-center justify-center h-full text-base-content/30 italic">
-                Diagram view not implemented yet
-            </div>
+        {:else if activeTab === 'indexes'}
+             <ResultTable result={indexesResult} />
+        {:else if activeTab === 'ddl'}
+             {#if ddlResult.loading}
+                <div class="h-full w-full flex items-center justify-center">
+                    <span class="loading loading-spinner"></span>
+                </div>
+             {:else if ddlResult.error}
+                <div class="p-4 text-error">Error: {ddlResult.error}</div>
+             {:else}
+                <pre class="p-4 overflow-auto h-full text-xs font-mono bg-base-100">{ddlResult.content}</pre>
+             {/if}
         {/if}
     </div>
 </div>

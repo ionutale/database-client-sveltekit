@@ -1,9 +1,11 @@
 <script lang="ts">
     import { connections, projects, tabs, activeTabId, type Connection, type Project } from '$lib/stores';
+    import AddConnectionModal from './AddConnectionModal.svelte';
 
     let expandedNodes = $state<Set<string>>(new Set(['default']));
     let nodeData = $state<Record<string, string[]>>({});
     let loadingNodes = $state<Set<string>>(new Set());
+    let isAddModalOpen = $state(false);
 
     function toggleExpand(id: string) {
         if (expandedNodes.has(id)) {
@@ -40,59 +42,39 @@
         loadingNodes = new Set(loadingNodes);
 
         try {
-            let query = '';
-            if (conn.type === 'sqlite') {
-                if (folderType === 'tables') {
-                    query = "SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
-                } else if (folderType === 'views') {
-                    query = "SELECT name FROM sqlite_schema WHERE type='view' ORDER BY name";
-                } else if (folderType === 'indexes') {
-                    query = "SELECT name FROM sqlite_schema WHERE type='index' ORDER BY name";
-                }
-            } else if (conn.type === 'postgres') {
-                if (folderType === 'tables') {
-                    query = "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename";
-                } else if (folderType === 'views') {
-                    query = "SELECT viewname FROM pg_views WHERE schemaname = 'public' ORDER BY viewname";
-                } else if (folderType === 'indexes') {
-                    query = "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' ORDER BY indexname";
-                }
-            } else if (conn.type === 'mysql') {
-                if (folderType === 'tables') {
-                    query = "SHOW TABLES";
-                } else if (folderType === 'views') {
-                    query = "SHOW FULL TABLES WHERE Table_type = 'VIEW'";
-                } else if (folderType === 'indexes') {
-                    query = "SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() ORDER BY TABLE_NAME, INDEX_NAME";
-                }
-            } else {
-                // For other DBs, placeholder
-                nodeData[nodeId] = [];
-                return;
-            }
+            let action = '';
+            if (folderType === 'tables') action = 'list-tables';
+            else if (folderType === 'views') action = 'list-views';
+            else if (folderType === 'indexes') action = 'list-indexes';
 
-            const res = await fetch('/api/query', {
+            const res = await fetch('/api/metadata', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    action,
                     type: conn.type,
-                    connectionString: conn.connectionString,
-                    query
+                    connectionString: conn.connectionString
                 })
             });
             const data = await res.json();
-            if (data.rows) {
-                if (conn.type === 'mysql' && folderType === 'views') {
-                    nodeData[nodeId] = data.rows.map((r: any) => Object.values(r)[0]);
-                } else if (conn.type === 'mysql' && folderType === 'indexes') {
-                    nodeData[nodeId] = data.rows.map((r: any) => `${r.TABLE_NAME}.${r.INDEX_NAME}`);
-                } else {
-                    nodeData[nodeId] = data.rows.map((r: any) => Object.values(r)[0]);
-                }
+            
+            if (Array.isArray(data)) {
+                 // The API returns TableInfo[] objects { name, type } or similar
+                 // For the UI, we just want the names for now, or we can store objects?
+                 // The UI code below iterates `nodeData[...]` which expects strings currently: `{#each ... as table} ... {table}`
+                 // So I should map to name string.
+                 
+                 if (folderType === 'indexes') {
+                     // The getIndexes returns { name, tableName }
+                     nodeData[nodeId] = data.map((d: any) => d.name ? `${d.tableName ? d.tableName + '.' : ''}${d.name}` : JSON.stringify(d));
+                 } else {
+                     nodeData[nodeId] = data.map((d: any) => d.name);
+                 }
             } else {
                 nodeData[nodeId] = [];
             }
         } catch (e) {
+            console.error(e);
             nodeData[nodeId] = [];
         } finally {
             loadingNodes.delete(nodeId);
@@ -115,27 +97,33 @@
     }
 </script>
 
-<div class="h-full overflow-y-auto bg-base-200 p-2">
-    {#each $projects as project}
-        <div class="mb-2">
-            <div 
-                class="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-base-300"
-                onclick={() => toggleExpand(project.id)}
-            >
-                <svg class="w-4 h-4 transition-transform {expandedNodes.has(project.id) ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
-                </svg>
-                <span class="font-medium">{project.name}</span>
-            </div>
-            
-            {#if expandedNodes.has(project.id)}
-                {#each project.connections as connId}
-                    {@const conn = $connections.find(c => c.id === connId)}
-                    {#if conn}
+<div class="h-full bg-base-200 flex flex-col">
+    <div class="p-2 border-b border-base-300 flex justify-between items-center shrink-0">
+        <span class="font-bold text-xs">CONNECTIONS</span>
+        <button class="btn btn-xs btn-ghost" onclick={() => isAddModalOpen = true} aria-label="Add Connection">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+        </button>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-2">
+        {#each $projects as project}
+            <div class="mb-2">
+                <div 
+                    class="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-base-300"
+                    onclick={() => toggleExpand(project.id)}
+                >
+                    <svg class="w-4 h-4 transition-transform {expandedNodes.has(project.id) ? 'rotate-90' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+                    </svg>
+                    <span class="font-medium">{project.name}</span>
+                </div>
+                
+                {#if expandedNodes.has(project.id)}
+                    {#each $connections.filter(c => c.projectId === project.id) as conn}
                         <div class="ml-4 mb-1">
                             <div 
                                 class="flex items-center gap-2 p-2 rounded cursor-pointer hover:bg-base-300"
@@ -208,9 +196,20 @@
                                 </div>
                             {/if}
                         </div>
-                    {/if}
-                {/each}
-            {/if}
-        </div>
-    {/each}
+                    {/each} 
+                    <!-- Fix: Original code iterated project.connections IDs, but stores.ts has projectId on connection. 
+                         The original code: `each project.connections as connId ... find(c => c.id === connId)`
+                         My replacement uses: `filter(c => c.projectId === project.id)` which assumes connections have projectId.
+                         stores.ts shows `connections: ['1']` in project, AND `projectId: 'default'` in connection.
+                         So both ways work, but filtering by projectId is more dynamic if we add connections and don't update project.connections array.
+                         The `AddConnectionModal` I wrote adds `projectId: 'default'`. It DOES NOT update `projects` store's connection list.
+                         So iterating `project.connections` IDs would MISS new connections unless I also update the project store.
+                         Iterating `$connections.filter` is safer for now.
+                    -->
+                {/if}
+            </div>
+        {/each}
+    </div>
+
+    <AddConnectionModal bind:open={isAddModalOpen} />
 </div>
