@@ -4,11 +4,13 @@
     let { 
         onrun = () => {}, 
         onnewtab = () => {}, 
+        onnewconnection = () => {},
         ontoggleRight = () => {},
         ontoggleSidebar = () => {}
     }: {
         onrun?: () => void;
         onnewtab?: () => void;
+        onnewconnection?: () => void;
         ontoggleRight?: () => void;
         ontoggleSidebar?: () => void;
     } = $props();
@@ -25,7 +27,7 @@
 
         <div class="w-px h-5 bg-base-300/50 mx-1"></div>
         
-        <button class="btn btn-ghost btn-xs text-base-content hover:bg-base-300/60 transition-all duration-200 hover:scale-105" title="New Connection">
+        <button class="btn btn-ghost btn-xs text-base-content hover:bg-base-300/60 transition-all duration-200 hover:scale-105" title="New Connection" onclick={onnewconnection}>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
             </svg>

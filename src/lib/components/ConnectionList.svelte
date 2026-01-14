@@ -1,11 +1,11 @@
 <script lang="ts">
     import { connections, projects, tabs, activeTabId, type Connection, type Project } from '$lib/stores';
-    import AddConnectionModal from './AddConnectionModal.svelte';
+
+    let { onAddConnection } = $props<{ onAddConnection: () => void }>();
 
     let expandedNodes = $state<Set<string>>(new Set(['default']));
     let nodeData = $state<Record<string, string[]>>({});
     let loadingNodes = $state<Set<string>>(new Set());
-    let isAddModalOpen = $state(false);
 
     function toggleExpand(id: string) {
         if (expandedNodes.has(id)) {
@@ -100,7 +100,7 @@
 <div class="h-full bg-base-200 flex flex-col">
     <div class="p-2 border-b border-base-300 flex justify-between items-center shrink-0">
         <span class="font-bold text-xs">CONNECTIONS</span>
-        <button class="btn btn-xs btn-ghost" onclick={() => isAddModalOpen = true} aria-label="Add Connection">
+        <button class="btn btn-xs btn-ghost" onclick={onAddConnection} aria-label="Add Connection">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
         </button>
     </div>
@@ -210,6 +210,4 @@
             </div>
         {/each}
     </div>
-
-    <AddConnectionModal bind:open={isAddModalOpen} />
 </div>

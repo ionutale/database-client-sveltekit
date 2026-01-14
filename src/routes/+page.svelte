@@ -6,6 +6,7 @@
     import BottomTabs from '$lib/components/BottomTabs.svelte';
     import TableDetailView from '$lib/components/TableDetailView.svelte';
     import SettingsModal from '$lib/components/SettingsModal.svelte';
+    import AddConnectionModal from '$lib/components/AddConnectionModal.svelte';
     import { activeConnection, tabs, activeTabId, connections, type Tab } from '$lib/stores';
 
     let sqlEditorRef: SqlEditor | undefined = $state(undefined);
@@ -13,6 +14,7 @@
     let activeSidebar = $state('explorer');
     let sidebarCollapsed = $state(false);
     let isSettingsOpen = $state(false);
+    let isAddConnectionOpen = $state(false);
 
     let activeTab = $derived($tabs.find(t => t.id === $activeTabId));
 
@@ -63,7 +65,13 @@
 
 <div class="h-screen w-screen bg-gradient-to-br from-base-100 via-base-50 to-base-200 flex flex-col overflow-hidden font-sans">
     <!-- Top Toolbar -->
-    <TopToolbar onrun={runActive} onnewtab={newTab} ontoggleRight={() => showRight = !showRight} ontoggleSidebar={toggleSidebar} />
+    <TopToolbar 
+        onrun={runActive} 
+        onnewtab={newTab} 
+        onnewconnection={() => isAddConnectionOpen = true}
+        ontoggleRight={() => showRight = !showRight} 
+        ontoggleSidebar={toggleSidebar} 
+    />
 
     <!-- Main Content Area -->
     <div class="flex-1 flex overflow-hidden">
@@ -124,7 +132,7 @@
             <Pane size={18} minSize={12} maxSize={30}>
                 <div class="h-full flex flex-col bg-base-200/80 backdrop-blur-md border-r border-base-300/50 shadow-lg">
                     {#if activeSidebar === 'explorer'}
-                        <ConnectionList />
+                        <ConnectionList onAddConnection={() => isAddConnectionOpen = true} />
                     {:else if activeSidebar === 'history'}
                         <div class="p-4 text-sm text-base-content/50 italic">Query history coming soon...</div>
                     {:else if activeSidebar === 'saved'}
@@ -245,4 +253,5 @@
         </Splitpanes>
     </div>
     <SettingsModal bind:open={isSettingsOpen} />
+    <AddConnectionModal bind:open={isAddConnectionOpen} />
 </div>
